@@ -124,11 +124,10 @@ function ug_create_product($producto){
 	}
 	
 	if(!is_wp_error($post_id)){
+		$my_prod = wc_get_product($post_id);
+
 		error_log("actualizando matadata...");
-		//$attach_id = get_post_meta($product->parent_id, "_thumbnail_id", true);
-		//add_post_meta($post_id, '_thumbnail_id', $attach_id);
-	
-		//wp_set_object_terms( $post_id, 'Races', 'product_cat' );
+
 		wp_set_object_terms( $post_id, 'simple', 'product_type');
 		
 		if ($producto->Existensia > 0){
@@ -139,11 +138,9 @@ function ug_create_product($producto){
 		update_post_meta( $post_id, '_stock', $producto->Existensia );
 		if($producto->Descontinuado ==1){
 			error_log('Item descontinuado: ' . $producto->Descontinuado);
-			$my_prod = wc_get_product($post_id);
 			$my_prod->set_catalog_visibility('hidden');
 			update_post_meta( $post_id, '_stock_status', 'outofstock');
 		}else{
-			$my_prod = wc_get_product($post_id);
 			$my_prod->set_catalog_visibility('visible');
 		}
 		
@@ -160,22 +157,22 @@ function ug_create_product($producto){
 		}else{
 			error_log("Descarga de Descripción habilitada");
 		}
-		update_post_meta( $post_id, '_downloadable', 'no');
-		update_post_meta( $post_id, '_virtual', 'no');
-		
-		update_post_meta( $post_id, '_price', $producto->PrecioLista);
-		update_post_meta( $post_id, '_regular_price', $producto->PrecioLista);
-		update_post_meta( $post_id, '_sale_price', $producto->Precio);
+		$my_prod->set_downloadable(false);
+		$my_prod->set_virtual(false);
+		$my_prod->set_price($producto->PrecioLista);
+		$my_prod->set_regular_price($producto->PrecioLista);
+		if ($producto->Precio > 0){
+			$my_prod->set_sale_price($producto->Precio);
+		}
 		update_post_meta( $post_id, '_purchase_note', "");
-		update_post_meta( $post_id, '_featured', "no" );
-		update_post_meta( $post_id, '_weight', $producto->Peso);
-		update_post_meta( $post_id, '_length', $producto->Largo);
-		update_post_meta( $post_id, '_width', $producto->Ancho);
-		update_post_meta( $post_id, '_height', $producto->Alto);
-		update_post_meta( $post_id, '_sku', $producto->IdProducto);
+		$my_prod->set_featured(false);
+		$my_prod->set_weight($producto->Peso);
+		$my_prod->set_length($producto->Largo);
+		$my_prod->set_width($producto->Ancho);
+		$my_prod->set_height($producto->Alto);
+		$my_prod->set_sku($producto->IdProducto);
+
 		//update_post_meta( $post_id, '_product_attributes', array());
-		update_post_meta( $post_id, '_sale_price_dates_from', "" );
-		update_post_meta( $post_id, '_sale_price_dates_to', "" );
 		update_post_meta( $post_id, '_sold_individually', "" );
 		//woocommerce_manage_stock is sync with plugin settings page
 		if ( 'yes' === get_option( 'woocommerce_manage_stock' ) ) {
@@ -191,6 +188,7 @@ function ug_create_product($producto){
 			$my_prod->set_description($producto->Descripcion); //Set product description.
 			error_log("Descarga de Images deshabilitada");
 		}else{
+			error_log("Descarga de Images habilitada");
 			update_post_meta( $post_id, '_product_image_gallery', '');
 			$c = count($producto->RutaImagenes);
 			error_log("$c images to be process...");
@@ -209,9 +207,7 @@ function ug_create_product($producto){
 					}
 				}
 			}
-			error_log("Descarga de Images habilitada");
 		}
-		
-
+		$my_prod->save();
 	}
 }

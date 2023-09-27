@@ -180,7 +180,7 @@ class Smuebleria_Admin_Settings {
 		$s = $this->get_name_options();
 		$options = get_option($s, $this->default_config_options());
 		$options = wp_parse_args($options, $this->default_config_options());
-		echo '<input type="checkbox" id="disable_description_id" name="'.$s.'[smu_disable_description]" value="yes"'. checked('yes',$options['smu_disable_images'], false). '/>';
+		echo '<input type="checkbox" id="disable_description_images" name="'.$s.'[smu_disable_images]" value="yes"'. checked('yes',$options['smu_disable_images'], false). '/>';
 	}
 
 
@@ -403,7 +403,7 @@ class Smuebleria_Admin_Settings {
 
 		//Deshabilitar la descarga de Imágenes
 		add_settings_field(
-			$this->get_slug() . 'disable_description_id',
+			$this->get_slug() . 'disable_description_images',
 			__('Deshabilitar la carga de Imágenes', 'smuebleria_plugin'),
 			array($this, 'render_check_disable_load_images'),
 			$this->get_slug(),							// The page on which this option will be displayed

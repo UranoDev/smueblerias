@@ -188,7 +188,7 @@ class Smueblerias {
 	}
 
 	/**
-	 * Register all of the hooks related to the public-facing functionality
+	 * Register all the hooks related to the public-facing functionality
 	 * of the plugin.
 	 *
 	 * @since    1.0.0
@@ -203,7 +203,7 @@ class Smueblerias {
 		$this->loader->add_action('woocommerce_created_customer', $plugin_public, 'create_erp_customer', 10, 3);
 		$this->loader->add_action('woocommerce_checkout_update_order_meta', $plugin_public, 'create_erp_order', 10, 2);
 		$this->loader->add_action('woocommerce_payment_complete', $plugin_public, 'send_payment', 10, 1);
-		//Borrar esta sección. Extraía los 4 dígitos de tarjeta. No funcionó
+		//TODO Borrar esta sección. Extraía los 4 dígitos de tarjeta. No funcionó
 		/* $this->loader->add_action('wc_gateway_stripe_process_response', $plugin_public, 'save_payment_data', 10, 2);
 		$this->loader->add_action('wc_gateway_stripe_process_payment', $plugin_public, 'save_payment_data', 10, 2); */
 		$this->loader->add_action('woocommerce_checkout_process', $plugin_public, 'validate_stock_erp', 10, 2);
@@ -211,7 +211,7 @@ class Smueblerias {
 	}
 
 	/**
-	 * Run the loader to execute all of the hooks with WordPress.
+	 * Run the loader to execute all the hooks with WordPress.
 	 *
 	 * @since    1.0.0
 	 */
