@@ -106,6 +106,7 @@ function ug_create_product($producto){
 		$post = $loop->post;
 		$post_id = $post->ID;
 		error_log ("encontré un registrto ($post_id) para el producto ". $producto->IdProducto);
+		echo ("encontré un registrto ($post_id) para el producto ". $producto->IdProducto);
 		wp_reset_postdata();
 	}else {
 		$post = array(
@@ -121,6 +122,7 @@ function ug_create_product($producto){
 		//Create post
 		$post_id = wp_insert_post( $post, true );
 		error_log("Se creó un registro $post_id");
+		echo ("Se creó un registro $post_id");
 	}
 	
 	if(!is_wp_error($post_id)){
@@ -171,6 +173,13 @@ function ug_create_product($producto){
 		$my_prod->set_width($producto->Ancho);
 		$my_prod->set_height($producto->Alto);
 		$my_prod->set_sku($producto->IdProducto);
+
+		if ('' != $producto->IdRama){
+			$cat = wp_insert_term($producto->IdRama, 'product_cat',  array('description'=> $producto->IdRama,'slug' => $producto->IdRama,));
+			if (!is_wp_error($cat)) {
+				$my_prod->set_category_ids( [ $cat['term_id'] ] );
+			}
+		}
 
 		//update_post_meta( $post_id, '_product_attributes', array());
 		update_post_meta( $post_id, '_sold_individually', "" );

@@ -27,7 +27,10 @@ function ug_add_product_db($producto){
 		'alto'=> $producto->Alto,
 		'ultima_actualizacion'=> date('Y-m-d H:i:s'),
 		'procesado' => null,
+		'idRama' => $producto->IdRama,
+		'detalleProductos' => $producto->DetalleProductos?json_encode($producto->DetalleProductos):null,
 	);
+
 	$s = '';
 	$c = count($producto->RutaImagenes);
 	for ($i=0;$i<$c;$i++){
