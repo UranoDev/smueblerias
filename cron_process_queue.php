@@ -24,7 +24,6 @@ echo "Número de registros leidos: $c\n";
 $i=0;
 $producto = new stdClass();
 foreach ($a as $p) {
-	//var_dump($p);
 	$producto->IdProducto = $p->idProducto;
 	$producto->Descripcion = $p->descripcion;
 	$producto->Nombre = $p->nombre;
@@ -37,12 +36,12 @@ foreach ($a as $p) {
 	$producto->Ancho = $p->ancho;
 	$producto->Alto = $p->alto;
 	$producto->RutaImagenes = explode(',', trim($p->rutaImagenes, ','));
-	$producto->IdRama = $p->idRama;
-	if (is_null($p->detalleProductos)) {
+	//$producto->IdRama = $p->idRama;
+	/*if (is_null($p->detalleProductos)) {
 		$producto->DetalleProductos = null;
 	}else {
 		$producto->DetalleProductos = json_decode( $p->detalleProductos, true );
-	}
+	}*/
 	ug_create_product ($producto);
 	echo "($i) $p->idProducto\n";
 	$i++;

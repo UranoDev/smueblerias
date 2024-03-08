@@ -153,11 +153,12 @@ function ug_create_product($producto){
 
 
 		$opt = get_option('smu_config_options');
-		if (isset($opt['smu_disable_description'])){
-			$my_prod->set_description($producto->Descripcion); //Set product description.	
-			error_log("Descarga de Descripción deshabilitada");
-		}else{
+		error_log("Opciones: " . print_r($opt,true));
+		if (isset($opt['smu_disable_description']) && $opt['smu_disable_description'] == 'yes'){
 			error_log("Descarga de Descripción habilitada");
+		}else{
+			$my_prod->set_description($producto->Descripcion); //Set product description.
+			error_log("Descarga de Descripción deshabilitada");
 		}
 		$my_prod->set_downloadable(false);
 		$my_prod->set_virtual(false);
@@ -174,12 +175,13 @@ function ug_create_product($producto){
 		$my_prod->set_height($producto->Alto);
 		$my_prod->set_sku($producto->IdProducto);
 
+		/*//Set the category for the product
 		if ('' != $producto->IdRama){
 			$cat = wp_insert_term($producto->IdRama, 'product_cat',  array('description'=> $producto->IdRama,'slug' => $producto->IdRama,));
 			if (!is_wp_error($cat)) {
 				$my_prod->set_category_ids( [ $cat['term_id'] ] );
 			}
-		}
+		}*/
 
 		//update_post_meta( $post_id, '_product_attributes', array());
 		update_post_meta( $post_id, '_sold_individually', "" );
@@ -194,7 +196,7 @@ function ug_create_product($producto){
 
 		$opt = get_option('smu_config_options');
 		if (isset($opt['smu_disable_images'])){
-			$my_prod->set_description($producto->Descripcion); //Set product description.
+			//$my_prod->set_description($producto->Descripcion); //Set product description.
 			error_log("Descarga de Images deshabilitada");
 		}else{
 			error_log("Descarga de Images habilitada");

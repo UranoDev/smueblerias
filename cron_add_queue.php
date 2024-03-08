@@ -8,11 +8,14 @@ include_once "../../../wp-admin/includes/plugin.php";
 // grabar en BD
 function ug_add_product_db($producto){
 	global $wpdb;
+	$wpdb->show_errors = true;
+
 	$table_name = $wpdb->prefix . "queue_products"; 
 	if (!(is_plugin_active('woocommerce/woocommerce.php')|| is_plugin_active_for_network('woocommerce/woocommerce.php'))){
-		//echo "Woocommerce no está instalado y activado.";
+		echo "Woocommerce no está instalado y activado.";
 		return;
 	}
+	echo "Agregando producto " . print_r($producto, true) . " a BD\n<br>";
 	$a = array(
 		'idProducto'=> $producto->IdProducto,
 		'descontinuado'=> $producto->Descontinuado,
@@ -27,8 +30,8 @@ function ug_add_product_db($producto){
 		'alto'=> $producto->Alto,
 		'ultima_actualizacion'=> date('Y-m-d H:i:s'),
 		'procesado' => null,
-		'idRama' => $producto->IdRama,
-		'detalleProductos' => $producto->DetalleProductos?json_encode($producto->DetalleProductos):null,
+		//'idRama' => $producto->IdRama,
+		//'detalleProductos' => $producto->DetalleProductos?json_encode($producto->DetalleProductos):null,
 	);
 
 	$s = '';
@@ -38,11 +41,15 @@ function ug_add_product_db($producto){
 		if ($i < $c) $s .= ',';
 	}
 	error_log ("Producto ($i) agregado en BD "  . $producto->IdProducto .")");
+	echo "Producto ($i) agregado en BD "  . $producto->IdProducto .")";
 	error_log ('Cadena de imagenes ' . $s);
 	$a = array_merge($a, array('rutaImagenes'=> $s));
 	error_log("registro: " . print_r($a,true));
 
 	$result = $wpdb->update($table_name,$a,array('idProducto'=> $producto->IdProducto));
+	echo "query:  (" . print_r($wpdb->last_query, true) . ")\n<br>";
+	echo "Error: " . print_r($wpdb->last_error, true) . "\n<br>";
+	echo "resultado de update:  (" . print_r($result, true) . ")\n<br>";
 	//error_log("resultado de update:  ($result)");
 	if (($result===false) || ($result === 0)){
 		$wpdb->insert($table_name, $a);
@@ -89,6 +96,7 @@ function ug_add_product_db($producto){
 			error_log($msj);
 			echo $msj;
 		}else{
+			echo "Iniciando carga de productos\n<br>";
 			foreach ($productos as $producto){
 				ug_add_product_db($producto);
 			}
