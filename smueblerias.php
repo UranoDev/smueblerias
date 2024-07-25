@@ -16,7 +16,7 @@
  * Plugin Name:       SMuebleria
  * Plugin URI:        uranodev.com/plugin/mueblerias
  * Description:       Plugin para sMuebleria, sync con el ERP
- * Version:           2.0.03.dev
+ * Version:           2.0.04.dev
  * Author:            Urano G
  * Author URI:        https://uranodev.com/urano-gonzalez/
  * License:           GPL-2.0+

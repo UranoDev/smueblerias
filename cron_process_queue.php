@@ -10,17 +10,20 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Main routine
+global $nl;
+(php_sapi_name() === 'cli')?$nl = "\n":$nl="<br>";
 global $wpdb;
 //$table_name = $wpdb->prefix . "queue_products"; 
 $sql = "SELECT * FROM {$wpdb->prefix}queue_products where procesado is null";
 $a = $wpdb->get_results( $sql );
 if (is_null($a)){
-	echo "no hay registros para actualiziar\n";
+	echo "no hay registros para actualiziar $nl";
 	exit;
 }
 $c = count($a);
 
-echo "Número de registros leidos: $c\n";
+echo "Número de registros leidos: $c $nl";
 $i=0;
 $producto = new stdClass();
 foreach ($a as $p) {
@@ -37,19 +40,20 @@ foreach ($a as $p) {
 	$producto->Alto = $p->alto;
 	$producto->RutaImagenes = explode(',', trim($p->rutaImagenes, ','));
 	//$producto->IdRama = $p->idRama;
-	/*if (is_null($p->detalleProductos)) {
-		$producto->DetalleProductos = null;
+	if (!isset($p->detalle_productos)) {
+		$producto->detalle_productos = null;
 	}else {
-		$producto->DetalleProductos = json_decode( $p->detalleProductos, true );
-	}*/
+		echo "$nl <pre>detalle_productos " . print_r($p->detalle_productos, true) . "</pre>" . $nl . $nl;
+		$producto->detalle_productos = json_decode( $p->detalle_productos, true );
+	}
 	ug_create_product ($producto);
-	echo "($i) $p->idProducto\n";
+	echo "($i) $p->idProducto $nl";
 	$i++;
 	$sql = "update {$wpdb->prefix}queue_products set procesado = 1 where id={$p->id}";
-	echo "Actualizando: $sql\n";
+	echo "Actualizando: $sql $nl";
 	$a = $wpdb->get_results( $sql );
 	if (is_null($a)){
-		echo "no pude actualizar el registro {$p->id}\n";
+		echo "no pude actualizar el registro {$p->id} $nl";
 	}
 }
 

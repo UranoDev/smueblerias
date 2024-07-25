@@ -94,6 +94,7 @@ function ug_image_gallery($url_image, $post_id){
 }
 
 function ug_create_product($producto){
+	global $nl;
 	if (!(is_plugin_active('woocommerce/woocommerce.php')|| is_plugin_active_for_network('woocommerce/woocommerce.php'))){
 		//echo "Woocommerce no está instalado y activado.";
 		return;
@@ -106,7 +107,7 @@ function ug_create_product($producto){
 		$post = $loop->post;
 		$post_id = $post->ID;
 		error_log ("encontré un registrto ($post_id) para el producto ". $producto->IdProducto);
-		echo ("encontré un registrto ($post_id) para el producto ". $producto->IdProducto);
+		echo ("encontré un registrto ($post_id) para el producto ". $producto->IdProducto . $nl);
 		wp_reset_postdata();
 	}else {
 		$post = array(
@@ -115,17 +116,18 @@ function ug_create_product($producto){
 			'post_status' => "publish",
 			'post_title' => $producto->Nombre,
 			'post_parent' => '',
-			'post_type' => "product",
+			'post_type' => isset($producto->detalle_productos) ? "product_variation" : "product",
 		);
 
 		$prod_is_new = true;
 		//Create post
 		$post_id = wp_insert_post( $post, true );
 		error_log("Se creó un registro $post_id");
-		echo ("Se creó un registro $post_id");
+		echo ("Se creó un registro $post_id $nl");
 	}
 	
 	if(!is_wp_error($post_id)){
+		(php_sapi_name() === 'cli')?$nl = "\n":$nl="<br>";
 		$my_prod = wc_get_product($post_id);
 
 		error_log("actualizando matadata...");
@@ -164,16 +166,47 @@ function ug_create_product($producto){
 		$my_prod->set_virtual(false);
 		$my_prod->set_price($producto->PrecioLista);
 		$my_prod->set_regular_price($producto->PrecioLista);
+
 		if ($producto->Precio > 0){
 			$my_prod->set_sale_price($producto->Precio);
 		}
 		update_post_meta( $post_id, '_purchase_note', "");
 		$my_prod->set_featured(false);
-		$my_prod->set_weight($producto->Peso);
-		$my_prod->set_length($producto->Largo);
-		$my_prod->set_width($producto->Ancho);
-		$my_prod->set_height($producto->Alto);
+		if (isset($opt['smu_disable_medidas']) && $opt['smu_disable_medidas'] != 'yes') {
+			$my_prod->set_weight( $producto->Peso );
+			$my_prod->set_weight( $producto->Peso );
+			$my_prod->set_length( $producto->Largo );
+			$my_prod->set_width( $producto->Ancho );
+			$my_prod->set_height( $producto->Alto );
+		}
 		$my_prod->set_sku($producto->IdProducto);
+
+		echo "$nl productos: " . print_r( $producto, true ) . $nl . $nl;
+
+		if (isset($producto->detalle_productos)) {
+			//Create Variations on Materiasl array
+			echo "Creando variaciones $nl";
+			$options = array();
+			foreach ($producto->detalle_productos as $detalle_producto) {
+				$options = $detalle_producto['Material'];
+			}
+			echo "<pre>Opciones: " . print_r($options, true) . "</pre>" . $nl;
+			$my_prod->set_type('variable');
+			$my_prod->set_attributes( array( 'material' => array('name' => 'material', 'options' => $options) ) );
+			$variation = new WC_Product_Variation();
+			$variation->set_parent_id( $post_id );
+			$variation->set_regular_price( $producto->PrecioLista );
+			$variation->save();
+			echo "<pre>detalle_productos: " . print_r( $producto->detalle_productos, true ) . "</pre>" . $nl;
+/*			foreach ( $producto->detalle_productos as $detalle_producto ) {
+				echo "detalle_producto: " . print_r( $detalle_producto['Material'], true ) . $nl;
+				$variation = new WC_Product_Variation();
+				$variation->set_parent_id( $post_id );
+				$variation->set_attributes( array( 'material' => $detalle_producto['Material'] ) );
+				$variation->set_regular_price( $producto->PrecioLista );
+				$variation->save();
+			}*/
+		}
 
 		/*//Set the category for the product
 		if ('' != $producto->IdRama){

@@ -6,8 +6,9 @@ include_once "../../../wp-admin/includes/plugin.php";
 
 
 // grabar en BD
-function ug_add_product_db($producto){
+function    ug_add_product_db($producto){
 	global $wpdb;
+	global $nl;
 	$wpdb->show_errors = true;
 
 	$table_name = $wpdb->prefix . "queue_products"; 
@@ -31,7 +32,7 @@ function ug_add_product_db($producto){
 		'ultima_actualizacion'=> date('Y-m-d H:i:s'),
 		'procesado' => null,
 		//'idRama' => $producto->IdRama,
-		//'detalleProductos' => $producto->DetalleProductos?json_encode($producto->DetalleProductos):null,
+		'detalle_productos' => $producto->DetalleProductos?json_encode($producto->DetalleProductos):null,
 	);
 
 	$s = '';
@@ -41,16 +42,15 @@ function ug_add_product_db($producto){
 		if ($i < $c) $s .= ',';
 	}
 	error_log ("Producto ($i) agregado en BD "  . $producto->IdProducto .")");
-	echo "Producto ($i) agregado en BD "  . $producto->IdProducto .")";
-	error_log ('Cadena de imagenes ' . $s);
+	echo "Producto ($i) agregado en BD "  . $producto->IdProducto .") $nl";
+	error_log ('Cadena de imagenes ' . $s) . "\n";
 	$a = array_merge($a, array('rutaImagenes'=> $s));
-	error_log("registro: " . print_r($a,true));
+	echo ("registro: " . print_r($a,true)) . "\n";
 
 	$result = $wpdb->update($table_name,$a,array('idProducto'=> $producto->IdProducto));
-	echo "query:  (" . print_r($wpdb->last_query, true) . ")\n<br>";
-	echo "Error: " . print_r($wpdb->last_error, true) . "\n<br>";
-	echo "resultado de update:  (" . print_r($result, true) . ")\n<br>";
-	//error_log("resultado de update:  ($result)");
+	echo "query:  (" . print_r($wpdb->last_query, true) . ")$nl";
+	echo "Error: " . print_r($wpdb->last_error, true) . "$nl";
+	echo "resultado de update:  (" . print_r($result, true) . ")$nl";
 	if (($result===false) || ($result === 0)){
 		$wpdb->insert($table_name, $a);
 	}
@@ -60,6 +60,8 @@ function ug_add_product_db($producto){
 
 
 // rutina principal
+	global $nl;
+	(php_sapi_name() === 'cli')?$nl = "\n":$nl="<br>";
 	$smu_config_options = get_option("smu_config_options", false);
 	if ($smu_config_options === false){
 		$msj = "no se tiene información de acceso al ERP\n<br>";
@@ -67,7 +69,7 @@ function ug_add_product_db($producto){
 		echo $msj;
 		return;
 	}
-	$msj =  print_r ($smu_config_options, true) . "\n<br>";
+	$msj =  "Opciones de configuración: " . print_r ($smu_config_options, true) . "\n<br>";
 	error_log($msj);
 	echo $msj;
 
@@ -76,7 +78,7 @@ function ug_add_product_db($producto){
 		'claveServicio=' . $smu_config_options['smu_clave_servicio'] . 
 		'&idEmpresa=' . $smu_config_options['smu_empresa'] . 
 		'&idUsuario=' .  $smu_config_options['smu_usuario'];
-	$msj = __FUNCTION__ . " url " . print_r($url, true) . "\n<br>";
+	$msj = __FUNCTION__ . " url para el ERP: " . print_r($url, true) . "\n<br>";
 	error_log($msj);
 	echo $msj;
 	$response = wp_remote_get($url);
@@ -99,6 +101,7 @@ function ug_add_product_db($producto){
 			echo "Iniciando carga de productos\n<br>";
 			foreach ($productos as $producto){
 				ug_add_product_db($producto);
+				echo $nl;
 			}
 			$msj = "Re carga exitosa de productos desde ERP " . "\n<br>";
 			error_log($msj);

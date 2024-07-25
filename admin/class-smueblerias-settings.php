@@ -183,6 +183,12 @@ class Smuebleria_Admin_Settings {
 		echo '<input type="checkbox" id="disable_description_images" name="'.$s.'[smu_disable_images]" value="yes"'. checked('yes',$options['smu_disable_images'], false). '/>';
 	}
 
+	public function render_check_disable_load_medidas(){
+		$s = $this->get_name_options();
+		$options = get_option($s, $this->default_config_options());
+		$options = wp_parse_args($options, $this->default_config_options());
+		echo '<input type="checkbox" id="disable_description_medidas" name="'.$s.'[smu_disable_medidas]" value="yes"'. checked('yes',$options['smu_disable_medidas'], false). '/>';
+	}
 
 	/**
 	 * Render Page
@@ -245,6 +251,8 @@ class Smuebleria_Admin_Settings {
 			'smu_usuario'			=>	3,
 			'smu_inventario'		=> "yes",
 			'smu_disable_description' => "no",
+			'smu_disable_images' => 'no',
+			'smu_disable_medidas' => 'no',
 		);
 		return $defaults;
 	}
@@ -261,9 +269,9 @@ class Smuebleria_Admin_Settings {
 				$output[$key] = strip_tags( stripslashes( $input[ $key ] ) );
 			} 
 		}
-		error_log("POST: ".print_r($_POST,true));
+/*		error_log("POST: ".print_r($_POST,true));
 		error_log("input: ".print_r($input,true));
-		error_log("output: ".print_r($output,true));
+		error_log("output: ".print_r($output,true));*/
 
 		/* error_log("validae fields " . print_r($_POST, true));
 		error_log("OUTPUT fields " . print_r($output, true)); */
@@ -406,6 +414,15 @@ class Smuebleria_Admin_Settings {
 			$this->get_slug() . 'disable_description_images',
 			__('Deshabilitar la carga de Imágenes', 'smuebleria_plugin'),
 			array($this, 'render_check_disable_load_images'),
+			$this->get_slug(),							// The page on which this option will be displayed
+			$this->get_slug() . '-section'				// The name of the section to which this field belongs
+		);
+
+		//Deshabilitar la descarga de Medidas
+		add_settings_field(
+			$this->get_slug() . 'disable_description_medidas',
+			__('Deshabilitar la carga de Medidas', 'smuebleria_plugin'),
+			array($this, 'render_check_disable_load_medidas'),
 			$this->get_slug(),							// The page on which this option will be displayed
 			$this->get_slug() . '-section'				// The name of the section to which this field belongs
 		);
