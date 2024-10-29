@@ -164,7 +164,7 @@ class Smueblerias_Public {
 		$nombre = $user->first_name;
 		$apellidos = $user->last_name;
 		// Continue and send the information to ERP now
-		$erp_cliente_id = $this->insertar_cliente($nombre, $apellidos, $correo, $password, '5555555555');
+		$erp_cliente_id = $this->insertar_cliente($nombre, $apellidos, $correo, $password, '');
 		update_user_meta($customer_id, '_erp_id_cliente', $erp_cliente_id);
 	}
 

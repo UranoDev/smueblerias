@@ -16,7 +16,7 @@
  * Plugin Name:       SMuebleria
  * Plugin URI:        uranodev.com/plugin/mueblerias
  * Description:       Plugin para sMuebleria, sync con el ERP
- * Version:           2.2.dev
+ * Version:           2.3.dev
  * Author:            Urano G
  * Author URI:        https://uranodev.com/urano-gonzalez/
  * License:           GPL-2.0+
@@ -37,7 +37,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SMUEBLERIAS_VERSION', '2.2.dev' );
+define( 'SMUEBLERIAS_VERSION', '2.3.dev' );
 
 /**
  * The code that runs during plugin activation.
