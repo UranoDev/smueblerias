@@ -57,6 +57,8 @@ class Smueblerias_Activator {
   largo decimal(8,2) DEFAULT NULL,
   ancho decimal(8,2) DEFAULT NULL,
   alto decimal(8,2) DEFAULT NULL,
+  es_paquete int(1) DEFAULT NULL,
+  items_paquete JSON DEFAULT NULL,
   ultima_actualizacion datetime DEFAULT '2020-01-01 00:00:00',
   procesado int(1) DEFAULT NULL,
   PRIMARY KEY (idProducto),

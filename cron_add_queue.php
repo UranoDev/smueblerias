@@ -30,10 +30,25 @@ function    ug_add_product_db($producto){
 		'ancho'=> $producto->Ancho,
 		'alto'=> $producto->Alto,
 		'ultima_actualizacion'=> date('Y-m-d H:i:s'),
+		'es_paquete' => null,
+		'items_paquete' => null,
 		'procesado' => null,
 		//'idRama' => $producto->IdRama,
-		'detalle_productos' => $producto->DetalleProductos?json_encode($producto->DetalleProductos):null,
 	);
+	if ($producto->EsPaquete ){
+		echo "Este producto es un paquete" . $nl;
+		$a['es_paquete'] = 1;
+		$lista_items = array();
+		$item = array();
+		foreach ( $producto->ContenidoPaquetes as $contenido_paquete ) {
+			$item['cantidad'] = $contenido_paquete->Cantidad;
+			$item['clave'] = $contenido_paquete->Clave;
+			$item['id_producto'] = $contenido_paquete->IdProducto;
+			$lista_items[] = $item;
+		}
+		$s = json_encode($lista_items);
+		$a['items_paquete'] = ($s===false)?null: $s;
+	}
 
 	$s = '';
 	$c = count($producto->RutaImagenes);

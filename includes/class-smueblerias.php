@@ -208,6 +208,9 @@ class Smueblerias {
 		$this->loader->add_action('wc_gateway_stripe_process_payment', $plugin_public, 'save_payment_data', 10, 2); */
 		$this->loader->add_action('woocommerce_checkout_process', $plugin_public, 'validate_stock_erp', 10, 2);
 		$this->loader->add_filter( 'woocommerce_locate_template', $plugin_public, 'woocommerce_locate_template', 10, 3 );
+
+		//Set the quantity of each child product in Grouped Products
+		$this->loader->add_filter( 'woocommerce_grouped_product_list_before_quantity', $plugin_public, 'ug_grouped_product_list_before_quantity', 10, 2 );
 	}
 
 	/**

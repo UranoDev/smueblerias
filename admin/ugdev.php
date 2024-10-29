@@ -93,8 +93,57 @@ function ug_image_gallery($url_image, $post_id){
 	update_post_meta($post_id,"_product_image_gallery",$s);
 }
 
+function custom_meta_query_same_key($meta_key, $meta_values) {
+	global $nl;
+	// Construye el array de meta_query
+	$meta_query = array('relation' => 'OR');
+	foreach ($meta_values as $value) {
+		$meta_query[] = array(
+			'key' => $meta_key,
+			'value' => $value,
+			'compare' => '='
+		);
+	}
+
+	// Configura los argumentos de WP_Query
+	$args = array(
+		'post_type' => 'product', // Cambia esto si quieres buscar en un tipo de post diferente
+		'meta_query' => $meta_query
+	);
+
+	// Realiza la consulta
+	$query = new WP_Query($args);
+	echo $nl . "Saliendo  a custom_meta_query_same_key con:" . print_r( $query, true ) . $nl;
+
+	return $query;
+}
+
+function ug_get_children (array $metavalues): array {
+	echo "Entrando a get_children con:" . print_r( $metavalues, true );
+	$list = array();
+	foreach ( $metavalues as $metavalue ) {
+		$list[] = $metavalue['id_producto'];
+	}
+	echo "lista de componentes: " . print_r( $list, true );
+	$children = array();
+	$query = custom_meta_query_same_key('_IdProducto', $list);
+	if ($query->have_posts()) {
+		while ($query->have_posts()) {
+			$query->the_post();
+			$children[] = get_the_ID();
+		}
+		wp_reset_postdata();
+	}
+	echo "lista de componentes: " . print_r( $children, true );
+	return $children;
+}
+
+
+
 function ug_create_product($producto){
 	global $nl;
+	(php_sapi_name() === 'cli')?$nl = "\n":$nl="<br>";
+
 	if (!(is_plugin_active('woocommerce/woocommerce.php')|| is_plugin_active_for_network('woocommerce/woocommerce.php'))){
 		//echo "Woocommerce no está instalado y activado.";
 		return;
@@ -105,39 +154,47 @@ function ug_create_product($producto){
 	$loop = new WP_Query( $args );
 	if ($loop->have_posts()){
 		$post = $loop->post;
+		$my_prod = wc_get_product( $post->ID );
 		$post_id = $post->ID;
 		error_log ("encontré un registrto ($post_id) para el producto ". $producto->IdProducto);
 		echo ("encontré un registrto ($post_id) para el producto ". $producto->IdProducto . $nl);
 		wp_reset_postdata();
 	}else {
-		$post = array(
-			'post_author' => get_current_user_id(),
-			'post_content' => $producto->Descripcion,
-			'post_status' => "publish",
-			'post_title' => $producto->Nombre,
-			'post_parent' => '',
-			'post_type' => isset($producto->detalle_productos) ? "product_variation" : "product",
-		);
+		if ($producto->EsPaquete == 1){
+			$my_prod = new WC_Product_Grouped ();
+			$list_children = ug_get_children( $producto->ContenidoPaquetes );
+			echo $nl ."lista de componentes: " . print_r( $list_children, true ) . $nl;
+			$my_prod->set_children($list_children);
+		} elseif ($producto->detalle_productos == 1) {
+				$my_prod = new WC_Product_Variable();
+		} else{
+			$my_prod = new WC_Product();
+		}
+
+		$my_prod->add_meta_data('_contenido_paquetes', json_encode($producto->ContenidoPaquetes), true);
+		$my_prod->set_name( $producto->Nombre );
+		$my_prod->set_description($producto->Descripcion);
+		$my_prod->set_status( 'publish' );
+
+		$my_prod->save();
+		$post_id = $my_prod->get_id();
+
+		echo "Creando producto " . $my_prod->get_type() . " $post_id" . $nl;
 
 		$prod_is_new = true;
-		//Create post
-		$post_id = wp_insert_post( $post, true );
-		error_log("Se creó un registro $post_id");
-		echo ("Se creó un registro $post_id $nl");
 	}
 	
-	if(!is_wp_error($post_id)){
-		(php_sapi_name() === 'cli')?$nl = "\n":$nl="<br>";
-		$my_prod = wc_get_product($post_id);
-
+	if($post_id){
 		error_log("actualizando matadata...");
 
-		wp_set_object_terms( $post_id, 'simple', 'product_type');
+		//wp_set_object_terms( $post_id, 'simple', 'product_type');
 		
 		if ($producto->Existensia > 0){
-			update_post_meta( $post_id, '_stock_status', 'instock');
+			$my_prod->set_stock_status('instock');
+			//update_post_meta( $post_id, '_stock_status', 'instock');
 		}else{
-			update_post_meta( $post_id, '_stock_status', 'outofstock');
+			$my_prod->set_stock_status('outofstock');
+			//update_post_meta( $post_id, '_stock_status', 'outofstock');
 		}
 		update_post_meta( $post_id, '_stock', $producto->Existensia );
 		if($producto->Descontinuado ==1){

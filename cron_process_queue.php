@@ -15,7 +15,7 @@ global $nl;
 (php_sapi_name() === 'cli')?$nl = "\n":$nl="<br>";
 global $wpdb;
 //$table_name = $wpdb->prefix . "queue_products"; 
-$sql = "SELECT * FROM {$wpdb->prefix}queue_products where procesado is null";
+$sql = "SELECT * FROM {$wpdb->prefix}queue_products where procesado is null order by es_paquete";
 $a = $wpdb->get_results( $sql );
 if (is_null($a)){
 	echo "no hay registros para actualiziar $nl";
@@ -39,6 +39,8 @@ foreach ($a as $p) {
 	$producto->Ancho = $p->ancho;
 	$producto->Alto = $p->alto;
 	$producto->RutaImagenes = explode(',', trim($p->rutaImagenes, ','));
+	$producto->EsPaquete = $p->es_paquete;
+	$producto->ContenidoPaquetes = json_decode($p->items_paquete??'', true);
 	//$producto->IdRama = $p->idRama;
 	if (!isset($p->detalle_productos)) {
 		$producto->detalle_productos = null;
