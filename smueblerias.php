@@ -15,8 +15,8 @@
  * @wordpress-plugin
  * Plugin Name:       SMuebleria
  * Plugin URI:        codigonube.com/plugin/mueblerias
- * Description:       Plugin para sMuebleria, sync con el ERP
- * Version:           1.1.dev
+ * Description:       Plugin para sMuebleria, sync con el ERP 2025-05-14
+ * Version:           2.5.dev
  * Author:            Urano G
  * Author URI:        https://codigonube.com/urano-gonzalez/
  * License:           GPL-2.0+
