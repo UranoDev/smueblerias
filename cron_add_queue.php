@@ -6,17 +6,12 @@ include_once "../../../wp-admin/includes/plugin.php";
 
 
 // grabar en BD
-function    ug_add_product_db($producto){
+function ug_add_product_db($producto){
 	global $wpdb;
 	global $nl;
 	$wpdb->show_errors = true;
 
-	$table_name = $wpdb->prefix . "queue_products"; 
-	if (!(is_plugin_active('woocommerce/woocommerce.php')|| is_plugin_active_for_network('woocommerce/woocommerce.php'))){
-		echo "Woocommerce no está instalado y activado.";
-		return;
-	}
-	echo "Agregando producto " . print_r($producto, true) . " a BD\n<br>";
+	$table_name = $wpdb->prefix . "queue_products";
 	$a = array(
 		'idProducto'=> $producto->IdProducto,
 		'descontinuado'=> $producto->Descontinuado,
@@ -30,26 +25,8 @@ function    ug_add_product_db($producto){
 		'ancho'=> $producto->Ancho,
 		'alto'=> $producto->Alto,
 		'ultima_actualizacion'=> date('Y-m-d H:i:s'),
-		'es_paquete' => null,
-		'items_paquete' => null,
 		'procesado' => null,
-		//'idRama' => $producto->IdRama,
 	);
-	if ($producto->EsPaquete ){
-		echo "Este producto es un paquete" . $nl;
-		$a['es_paquete'] = 1;
-		$lista_items = array();
-		$item = array();
-		foreach ( $producto->ContenidoPaquetes as $contenido_paquete ) {
-			$item['cantidad'] = $contenido_paquete->Cantidad;
-			$item['clave'] = $contenido_paquete->Clave;
-			$item['id_producto'] = $contenido_paquete->IdProducto;
-			$lista_items[] = $item;
-		}
-		$s = json_encode($lista_items);
-		$a['items_paquete'] = ($s===false)?null: $s;
-	}
-
 	$s = '';
 	$c = count($producto->RutaImagenes);
 	for ($i=0;$i<$c;$i++){
@@ -68,7 +45,9 @@ function    ug_add_product_db($producto){
 	echo "resultado de update:  (" . print_r($result, true) . ")$nl";
 	if (($result===false) || ($result === 0)){
 		$wpdb->insert($table_name, $a);
+        echo " insertado";
 	}
+    echo PHP_EOL;
 	
 }
 

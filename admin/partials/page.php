@@ -14,8 +14,7 @@
         <?php do_settings_sections($this->get_slug()); ?>
         <p> 
             <input type="submit" name="guardar" class="button button-primary" value="Guardar" id="guardar">
-            <!--TODO: Quitar botón para cargar productos
-            <input type="submit" name="cargar" class="button button-secondary" value="Cargar Productos" id="cargar">-->
+            <input type="submit" name="cargar" class="button button-secondary" value="Cargar Productos" id="cargar">
         </p>
     </form>
 </div>

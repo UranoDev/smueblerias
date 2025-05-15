@@ -269,9 +269,9 @@ class Smuebleria_Admin_Settings {
 				$output[$key] = strip_tags( stripslashes( $input[ $key ] ) );
 			} 
 		}
-/*		error_log("POST: ".print_r($_POST,true));
+		error_log("POST: ".print_r($_POST,true));
 		error_log("input: ".print_r($input,true));
-		error_log("output: ".print_r($output,true));*/
+		error_log("output: ".print_r($output,true));
 
 		/* error_log("validae fields " . print_r($_POST, true));
 		error_log("OUTPUT fields " . print_r($output, true)); */
@@ -408,7 +408,7 @@ class Smuebleria_Admin_Settings {
 			$this->get_slug(),							// The page on which this option will be displayed
 			$this->get_slug() . '-section'				// The name of the section to which this field belongs
 		);
-
+		
 		//Deshabilitar la descarga de Imágenes
 		add_settings_field(
 			$this->get_slug() . 'disable_description_images',

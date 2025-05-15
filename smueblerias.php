@@ -8,17 +8,17 @@
  * registers the activation and deactivation functions, and defines a function
  * that starts the plugin.
  *
- * @link              https://uranodev.com/urano-gonzalez/
+ * @link              https://codigonube.com/urano-gonzalez/
  * @since             1.1.0
  * @package           Smuebleria
  *
  * @wordpress-plugin
  * Plugin Name:       SMuebleria
- * Plugin URI:        uranodev.com/plugin/mueblerias
+ * Plugin URI:        codigonube.com/plugin/mueblerias
  * Description:       Plugin para sMuebleria, sync con el ERP
- * Version:           2.3.dev
+ * Version:           1.1.dev
  * Author:            Urano G
- * Author URI:        https://uranodev.com/urano-gonzalez/
+ * Author URI:        https://codigonube.com/urano-gonzalez/
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       smueblerias
@@ -37,7 +37,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SMUEBLERIAS_VERSION', '2.3.dev' );
+define( 'SMUEBLERIAS_VERSION', '1.1.dev' );
 
 /**
  * The code that runs during plugin activation.

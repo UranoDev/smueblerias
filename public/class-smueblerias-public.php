@@ -164,7 +164,7 @@ class Smueblerias_Public {
 		$nombre = $user->first_name;
 		$apellidos = $user->last_name;
 		// Continue and send the information to ERP now
-		$erp_cliente_id = $this->insertar_cliente($nombre, $apellidos, $correo, $password, '');
+		$erp_cliente_id = $this->insertar_cliente($nombre, $apellidos, $correo, $password, '5555555555');
 		update_user_meta($customer_id, '_erp_id_cliente', $erp_cliente_id);
 	}
 
@@ -400,28 +400,4 @@ class Smueblerias_Public {
 		}
 	}
 
-	public function ug_grouped_product_list_before_quantity($child_product, $previous_post) {
-		$parent_product_id = $previous_post->ID;
-		$product_id = $child_product->get_id();
-		$erp_product_id = get_post_meta( $product_id, '_IdProducto', true );
-		$details = json_decode(get_post_meta($parent_product_id, '_contenido_paquetes', true ));
-		/*echo "</br>-------------------------------<br>";
-		echo "looking for: _IdProducto in " . $product_id . "<br>";
-		echo "parent_product_id: " . $parent_product_id . "<br>";
-		echo "details: ($parent_product_id): " . print_r( $details, true ) . "<br>";
-		echo "<br>-------------------------------<br>";*/
-		if (empty( $details) ) {
-			return $child_product;
-		}
-
-		//print_r( $details ); echo "<br>";
-		foreach ( $details as $detail ) {
-			//echo "Comparing erp_product_id: $erp_product_id with detail->id_producto: {$detail->id_producto} <br>";
-			if ( $detail->id_producto == $erp_product_id ) {
-				$_POST['quantity'][$product_id] = $detail->cantidad;
-				//echo "Found it! setting quantity to {$detail->cantidad} <br>";
-			}
-		}
-		return $child_product;
-	}
 }
