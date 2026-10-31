@@ -3,17 +3,66 @@ date_default_timezone_set('America/Mexico_City');
 //este archivo irá en el directorio raiz de WP o se debe cambiar la ruta:
 include_once "../../../wp-load.php";
 include_once "../../../wp-admin/includes/plugin.php";
+include_once "includes/smueblerias-log.php";
 include_once "admin/ugdev.php";
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+//Los errores salen en pantalla solo con ?debug=1; siempre quedan en el log
+ini_set('display_errors', ug_debug_enabled() ? 1 : 0);
+ini_set('display_startup_errors', ug_debug_enabled() ? 1 : 0);
 error_reporting(E_ALL);
 
 // Main routine
 global $nl;
 (php_sapi_name() === 'cli')?$nl = "\n":$nl="<br>";
 global $wpdb;
-//$table_name = $wpdb->prefix . "queue_products"; 
+
+if (!ug_acquire_queue_lock()){
+	echo "Ya hay otra carga de la cola en ejecución $nl";
+	exit;
+}
+
+// Modo "imagenes" (php cron_process_queue.php imagenes): revisa las imágenes de todos los productos de la cola,
+// no solo las de los pendientes. Detecta las imágenes que el ERP reemplazó con el mismo nombre.
+$modo_imagenes = php_sapi_name() === 'cli' ? (isset($argv[1]) && $argv[1] === 'imagenes') : isset($_GET['imagenes']);
+if ($modo_imagenes){
+	if (ug_images_disabled()){
+		echo "La carga de imágenes está deshabilitada en la configuración $nl";
+		exit;
+	}
+	//Por URL se revisa un lote a la vez (?imagenes=1&desde=0&lote=100) para no pasar el tiempo límite del servidor
+	$limit_sql = '';
+	$total_cola = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}queue_products");
+	if (php_sapi_name() !== 'cli'){
+		$desde = isset($_GET['desde']) ? absint($_GET['desde']) : 0;
+		$lote = isset($_GET['lote']) ? min(500, max(1, absint($_GET['lote']))) : 100;
+		$limit_sql = " LIMIT $lote OFFSET $desde";
+	}
+	$rows = $wpdb->get_results("SELECT idProducto, rutaImagenes FROM {$wpdb->prefix}queue_products ORDER BY idProducto" . $limit_sql);
+	$total = array('productos' => 0, 'sin producto en Woo' => 0, 'descargadas' => 0, 'borradas' => 0, 'sin cambios' => 0, 'fallidas' => 0);
+	foreach ($rows as $row){
+		$post_id = ug_find_product_id($row->idProducto);
+		if (!$post_id){
+			$total['sin producto en Woo']++;
+			continue;
+		}
+		$total['productos']++;
+		$result = ug_sync_product_images($post_id, explode(',', trim($row->rutaImagenes, ',')));
+		foreach ($result as $k => $v){
+			$total[$k] += $v;
+		}
+		if ($result['descargadas'] || $result['borradas'] || $result['fallidas']){
+			echo "Producto {$row->idProducto}: {$result['descargadas']} descargadas, {$result['borradas']} borradas, {$result['fallidas']} fallidas $nl";
+		}
+	}
+	if ($limit_sql !== '' && $desde + $lote < $total_cola){
+		$siguiente = $desde + $lote;
+		echo "Siguiente lote: ?imagenes=1&desde=$siguiente&lote=$lote $nl";
+	}
+	echo "Resumen imágenes: {$total['productos']} productos, {$total['descargadas']} descargadas, {$total['borradas']} borradas, {$total['sin cambios']} sin cambios, {$total['fallidas']} fallidas, {$total['sin producto en Woo']} sin producto en Woo $nl";
+	exit;
+}
+
+//$table_name = $wpdb->prefix . "queue_products";
 $sql = "SELECT * FROM {$wpdb->prefix}queue_products where procesado is null";
 $a = $wpdb->get_results( $sql );
 if (is_null($a)){
@@ -24,10 +73,11 @@ $c = count($a);
 
 echo "Número de registros leidos: $c $nl";
 $i=0;
-$producto = new stdClass();
+$errores=0;
 foreach ($a as $p) {
-	//var_dump($p);
+	$producto = new stdClass();
 	$producto->IdProducto = $p->idProducto;
+	$producto->IdCategoria = $p->idCategoria;
 	$producto->Descripcion = $p->descripcion;
 	$producto->Nombre = $p->nombre;
 	$producto->Existensia = $p->existencias;
@@ -39,18 +89,27 @@ foreach ($a as $p) {
 	$producto->Ancho = $p->ancho;
 	$producto->Alto = $p->alto;
 	$producto->RutaImagenes = explode(',', trim($p->rutaImagenes, ','));
-	 
-	ug_create_product ($producto);
-	echo "($i) $p->idProducto $nl";
-	$i++;
-	$sql = "update {$wpdb->prefix}queue_products set procesado = 1 where id={$p->id}";
-	echo "Actualizando: $sql $nl";
-	$a = $wpdb->get_results( $sql );
-	if (is_null($a)){
-		echo "no pude actualizar el registro {$p->id} $nl";
-	}
-}
 
+	try {
+		$ok = ug_create_product ($producto);
+	} catch (Throwable $e){
+		error_log("ERROR en el producto {$p->idProducto}: " . $e->getMessage());
+		$ok = false;
+	}
+	if ($ok){
+		ug_debug_echo("($i) $p->idProducto $nl");
+		//Solo se marca procesado si el producto quedó guardado; si no, se reintenta en la siguiente corrida
+		$done = $wpdb->query($wpdb->prepare("update {$wpdb->prefix}queue_products set procesado = 1 where id = %d", $p->id));
+		if (false === $done){
+			echo "no pude actualizar el registro {$p->id} $nl";
+		}
+	}else{
+		$errores++;
+		echo "($i) $p->idProducto ERROR: no se pudo guardar, se reintenta en la siguiente carga $nl";
+	}
+	$i++;
+}
+echo "Resumen: " . ($i - $errores) . " procesados, $errores con error $nl";
 /**
  * fin de rutina principal
  */

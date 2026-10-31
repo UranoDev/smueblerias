@@ -170,6 +170,7 @@ class Smueblerias {
 		//$this->loader->add_action('woocommerce_product_get_stock_quantity', $plugin_admin, 'ug_stock_get_stock_quantity', 10, 2);
 		//$this->loader->add_action('save_post_product', $plugin_admin, 'ug_reset_product_erp', 10, 2);//esto se dispara cuando borras.. revisar
 		$this->loader->add_action('admin_head', $plugin_admin, 'ug_hide_wc_refund_button');
+		$this->loader->add_action('add_meta_boxes', $plugin_admin, 'add_missing_meta_box', 10, 2);
 		
 		
 		
@@ -200,7 +201,6 @@ class Smueblerias {
 
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
-		$this->loader->add_action('woocommerce_created_customer', $plugin_public, 'create_erp_customer', 10, 3);
 		$this->loader->add_action('woocommerce_checkout_update_order_meta', $plugin_public, 'create_erp_order', 10, 2);
 		$this->loader->add_action('woocommerce_payment_complete', $plugin_public, 'send_payment', 10, 1);
 		//Borrar esta sección. Extraía los 4 dígitos de tarjeta. No funcionó

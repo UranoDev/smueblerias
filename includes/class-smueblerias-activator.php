@@ -46,7 +46,7 @@ class Smueblerias_Activator {
 		  modelo varchar(100),
 		  nombre varchar(100),
 		  clave varchar(25),
-		  descripcion varchar(2500),
+		  descripcion text,
 		  precio decimal(12,2),
 		  precioLista decimal(12,2),
 		  rutaImagenes varchar(12800),
@@ -67,5 +67,25 @@ class Smueblerias_Activator {
 		dbDelta( $sql );
 	}
 
+
+	/**
+	 * Pone al día la tabla de la cola en instalaciones anteriores: la descripción pasa de varchar(2500) a text
+	 * (varchar(6400) no cabe en la fila junto a las rutas de imágenes). Se corre una vez por versión de la tabla.
+	 */
+	public static function maybe_upgrade_db() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . "queue_products";
+		if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") !== $table_name){
+			return;
+		}
+		$col = $wpdb->get_row("SHOW COLUMNS FROM $table_name LIKE 'descripcion'");
+		if ($col && 0 === stripos($col->Type, 'varchar')){
+			if (false === $wpdb->query("ALTER TABLE $table_name MODIFY descripcion TEXT NULL")){
+				error_log("ERROR no pude ampliar la columna descripcion de la cola: " . $wpdb->last_error);
+				return;
+			}
+		}
+		update_option('smu_db_version', SMUEBLERIAS_DB_VERSION);
+	}
 
 }

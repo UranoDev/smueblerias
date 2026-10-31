@@ -269,9 +269,9 @@ class Smuebleria_Admin_Settings {
 				$output[$key] = strip_tags( stripslashes( $input[ $key ] ) );
 			} 
 		}
-		error_log("POST: ".print_r($_POST,true));
-		error_log("input: ".print_r($input,true));
-		error_log("output: ".print_r($output,true));
+		error_log(ug_mask_erp_data("POST: ".print_r($_POST,true)));
+		error_log(ug_mask_erp_data("input: ".print_r($input,true)));
+		error_log(ug_mask_erp_data("output: ".print_r($output,true)));
 
 		/* error_log("validae fields " . print_r($_POST, true));
 		error_log("OUTPUT fields " . print_r($output, true)); */
@@ -294,12 +294,12 @@ class Smuebleria_Admin_Settings {
 		$url = $output['smu_url'] . $servicio . '?' . 'claveServicio=' . $output['smu_clave_servicio'] . 
 			'&idEmpresa=' . $output['smu_empresa'] . '&idUsuario=' .  $output['smu_usuario'];
 		
-		error_log(__FUNCTION__ . " url " . print_r($url, true));
+		error_log(ug_mask_erp_data(__FUNCTION__ . " url " . print_r($url, true)));
 		$response = wp_remote_get($url,array('timeout' => 65));
 		
 		if (is_wp_error($response)){
-			add_settings_error($this->get_slug(),'xxx', "ERROR Respuesta HTTP (" . print_r($response->get_error_codes(), true) . ") Conexion intentada con $url", 'info');
-			error_log(__FUNCTION__ . " error respons " . print_r($response, true));
+			add_settings_error($this->get_slug(),'xxx', "ERROR Respuesta HTTP (" . print_r($response->get_error_codes(), true) . ") Conexion intentada con " . ug_mask_erp_data($url), 'info');
+			error_log(ug_mask_erp_data(__FUNCTION__ . " error respons " . print_r($response, true)));
 		}else{
 			if (isset($_POST['cargar'])){
 				error_log("respuesta de cargar: ". print_r($response['body'],true));

@@ -130,6 +130,35 @@ class Smueblerias_Public {
 	//@todo Something Eliminar, no se utilizará actualizar en Public
 	//si se va a usar... directamente 
 	//funcionalidad repetido en class-mueblerias-admin.php
+	// Llama al ERP y devuelve la respuesta ya decodificada, o null si no se pudo:
+	// sin conexión, un código HTTP distinto de 200 o un cuerpo que no es JSON.
+	private function erp_request ($service, $url){
+		$response = wp_remote_get($url);
+		if (is_wp_error($response)){
+			error_log(ug_mask_erp_data("ERROR ERP $service: " . $response->get_error_message() . ". url: $url"));
+			return null;
+		}
+		$code = (int) wp_remote_retrieve_response_code($response);
+		$body = wp_remote_retrieve_body($response);
+		error_log(ug_mask_erp_data("Service $service, respuesta: " . print_r($response, true)));
+		if (200 !== $code){
+			error_log(ug_mask_erp_data("ERROR ERP $service: código HTTP $code. url: $url"));
+			return null;
+		}
+		$data = json_decode($body);
+		if (null === $data && 'null' !== trim($body)){
+			error_log(ug_mask_erp_data("ERROR ERP $service: la respuesta no es JSON. url: $url"));
+			return null;
+		}
+		return $data;
+	}
+
+	// Deja constancia en el pedido de lo que no se pudo enviar al ERP
+	private function erp_order_note ($order, $texto){
+		error_log("Pedido " . $order->get_id() . ": $texto");
+		$order->add_order_note("ERP: $texto");
+	}
+
 	public function get_existencias_erp($product_id_erp){
 
 		$service = 'ObtenerDatosProductosPorIdProducto';
@@ -142,44 +171,58 @@ class Smueblerias_Public {
  		$url = $options['smu_url'] . $service . '?' . 'claveServicio=' . $options['smu_clave_servicio'] . 
 			'&idEmpresa=' . $options['smu_empresa'] . '&idUsuario=' .  $options['smu_usuario'] .
 			'&idProducto=' . $id_producto;
-		error_log ("URL para llamar servicio $url");
-		$response = wp_remote_get($url);
-		$producto = json_decode($response['body']);
-		error_log("Service $service, respuesta ($id_producto): " . print_r($response, true));
-		
-		//update_post_meta( $id_producto, '_stock', $producto[0]->Existensia );
+		error_log (ug_mask_erp_data("URL para llamar servicio $url"));
+		$producto = $this->erp_request($service, $url);
+		if (!is_array($producto) || !isset($producto[0]->Existensia)){
+			//Sin respuesta del ERP: devuelve null para no bloquear la compra
+			return null;
+		}
 		return $producto[0]->Existensia;
 	}
 
-	function create_erp_customer ($customer_id, $new_customer_data, $password_generated){
-		error_log ("creando customer" . $customer_id);
-		// Get the New Customer's data
-		$username   = $new_customer_data['user_login'];
-		$password   = $new_customer_data['user_pass'];
-		$correo      = $new_customer_data['user_email'];
-		$role       = $new_customer_data['role'];
-
-		// Getting the rest of the info for this customer
-		$user = get_user_by( 'id', $customer_id );
-		$nombre = $user->first_name;
-		$apellidos = $user->last_name;
-		// Continue and send the information to ERP now
-		$erp_cliente_id = $this->insertar_cliente($nombre, $apellidos, $correo, $password, '5555555555');
+	// Da de alta al cliente en el ERP la primera vez que hace un pedido, cuando ya se tiene su teléfono.
+	// Devuelve el id del cliente en el ERP, o null si no se pudo.
+	private function ensure_erp_customer ($order){
+		$customer_id = $order->get_user_id();
+		if (!$customer_id){
+			return null;
+		}
+		$erp_cliente_id = get_user_meta($customer_id, '_erp_id_cliente', true);
+		if ('' !== $erp_cliente_id){
+			return $erp_cliente_id;
+		}
+		$telefono = trim($order->get_billing_phone());
+		if ('' === $telefono){
+			$this->erp_order_note($order, "el pedido no trae teléfono, no se creó el cliente");
+			return null;
+		}
+		$user = get_user_by('id', $customer_id);
+		$nombre = $order->get_billing_first_name() ?: $user->first_name;
+		$apellidos = $order->get_billing_last_name() ?: $user->last_name;
+		//El ERP pide una contraseña, pero la de la tienda no se envía
+		$erp_cliente_id = $this->insertar_cliente($nombre, $apellidos, $user->user_email, 'sin_password', $telefono);
+		if (!is_numeric($erp_cliente_id)){
+			$this->erp_order_note($order, "no se pudo crear el cliente");
+			return null;
+		}
 		update_user_meta($customer_id, '_erp_id_cliente', $erp_cliente_id);
+		return $erp_cliente_id;
 	}
-
 	function insertar_cliente($nombre, $apellidos, $correo, $password, $telefono){
 		$service = 'InsertarCliente';
 		$options=get_option('smu_config_options');
 		$url = $options['smu_url'] . $service . '?' . 'claveServicio=' . $options['smu_clave_servicio'] . 
 			'&idEmpresa=' . $options['smu_empresa'] . '&idUsuario=' .  $options['smu_usuario'] .
-			"&nombre=". str_replace(" ", "%20", $nombre) . "&apellidos=" . str_replace(" ", "$20", $apellidos) . "&correo=$correo" . "&password=$password" . 
-			"&telefono=$telefono"; 
-		$response = wp_remote_get($url);
-		error_log("respuesta del servicio: " . print_r($response, true));
-		$cte_id = json_decode($response['body']);
+			"&nombre=" . rawurlencode($nombre) . "&apellidos=" . rawurlencode($apellidos) . "&correo=" . rawurlencode($correo) . "&password=" . rawurlencode($password) . "&telefono=" . rawurlencode($telefono);
+		$cte_id = $this->erp_request($service, $url);
 		error_log ("Cliente creado:" . print_r($cte_id, true));
 		return $cte_id;
+	}
+
+	//Los pedidos anteriores pueden tener el dato solo en postmeta
+	private function get_erp_order_meta ($order, $key){
+		$value = $order->get_meta($key);
+		return $value !== '' ? $value : get_post_meta($order->get_id(), $key, true);
 	}
 
 	function insertar_direccion ($id_order, $type){
@@ -189,9 +232,14 @@ class Smueblerias_Public {
 		$order = wc_get_order($id_order);
 		$id_user = $order->get_user_id();
 
+		$dir_enviada = $this->get_erp_order_meta($order, "_erp_direccion_$type");
+		if (is_numeric($dir_enviada) && $dir_enviada > 0){
+			return $dir_enviada;
+		}
+
 		$add_billing = $order->get_address($type);
 		error_log ("DEBUG: Dir $type: " . print_r($add_billing,true));
-		if ($add_billing['address_a'] = ''){
+		if ('' === trim((string) ($add_billing['address_1'] ?? ''))){
 			error_log("Function " . __FUNCTION__ .". Order $id_order, type: $type, no found");
 			return;
 		}
@@ -214,24 +262,28 @@ class Smueblerias_Public {
 			$url .= "&$key=$value";
 		}
 		
-		$response = wp_remote_get($url);
-		$dir_id = json_decode($response['body']);
-		error_log("Service: $service, Dir_id: $dir_id. Data: " . print_r($data, true).", url: para insertar direccion $url");
-		update_post_meta($id_order, "_erp_direccion_$type", $dir_id);
+		$dir_id = $this->erp_request($service, $url);
+		error_log(ug_mask_erp_data("Service: $service, Dir_id: " . print_r($dir_id, true) . ". Data: " . print_r($data, true).", url: para insertar direccion $url"));
+		if (!is_numeric($dir_id)){
+			$this->erp_order_note($order, "no se pudo enviar la dirección de $type");
+			return null;
+		}
+		$order->update_meta_data("_erp_direccion_$type", $dir_id);
+		$order->save();
 		return $dir_id;		
 	}
 
 	function insertar_venta ($id_order){
 		$service = 'InsertarVentas';
-		$chosen_payment_method = WC()->session->get('chosen_payment_method'); //Get the selected payment method
+		// Get an instance of the WC_Order object (same as before)
+		$order = wc_get_order($id_order);
+		$chosen_payment_method = $order->get_payment_method(); //Get the selected payment method
 		error_log ("gateway usado para orden $chosen_payment_method");
-		$venta_id = get_post_meta($id_order, "_erp_venta_id", true);
+		$venta_id = $this->get_erp_order_meta($order, "_erp_venta_id");
 		if ($venta_id > 0){
 			return $venta_id;
 		}
 		$options=get_option('smu_config_options');
-		// Get an instance of the WC_Order object (same as before)
-		$order = wc_get_order($id_order);
 		$id_user = $order->get_user_id();
 		$prices_include_tax    = get_option( 'woocommerce_prices_include_tax' );
 
@@ -247,11 +299,11 @@ class Smueblerias_Public {
 		
 		
 		$data['idCliente'] = get_user_meta($id_user, '_erp_id_cliente', true);
-		$data['direccion'] = get_post_meta($id_order, "_erp_direccion_shipping", true);
+		$data['direccion'] = $this->get_erp_order_meta($order, "_erp_direccion_shipping");
 		if ($data['direccion'] == ''){
-			$data['direccion'] = get_post_meta($id_order, "_erp_direccion_billing", true);
+			$data['direccion'] = $this->get_erp_order_meta($order, "_erp_direccion_billing");
 		}
-		$data['direccionFacturacion'] = get_post_meta($id_order, "_erp_direccion_billing", true);
+		$data['direccionFacturacion'] = $this->get_erp_order_meta($order, "_erp_direccion_billing");
 		$data['subtotal'] = $order->get_subtotal();
 		$data['iva']= $order->get_total() - $order->get_subtotal();
 		$data['total'] = $order->get_total();
@@ -282,28 +334,33 @@ class Smueblerias_Public {
 			
 		}
 		//$url = str_replace(' ', '%20', $url);
-		error_log('venta url a usar ' . $url);
+		error_log(ug_mask_erp_data('venta url a usar ' . $url));
 		/* $url = rawurlencode($url);
 		error_log('venta url codificada a usar ' . $url); */
-		$response = wp_remote_get($url);
-		error_log(print_r($response,true));
-		$venta_resp = json_decode($response['body']);
+		$venta_resp = $this->erp_request($service, $url);
 		error_log ("resultado de body:". print_r($venta_resp,true));
-		$venta_id = $venta_resp[0]->IdVenta;
-		$folio_venta = $venta_resp[0]->FolioVenta;
+		$venta_id = is_array($venta_resp) && isset($venta_resp[0]->IdVenta) ? $venta_resp[0]->IdVenta : null;
+		$folio_venta = is_array($venta_resp) && isset($venta_resp[0]->FolioVenta) ? $venta_resp[0]->FolioVenta : '';
 		error_log(print_r("El id de la venta es ".print_r($venta_id,true),true));
 		if (!is_integer($venta_id)){
 			$venta_id = 0;
+			$this->erp_order_note($order, "no se pudo registrar la venta");
 		}else{
 			error_log ("Venta creada:" . print_r($venta_id, true));
-			update_post_meta($id_order, "_erp_venta_id", $venta_id);
-			update_post_meta ($id_order, '_erp_folio_venta', $folio_venta);
+			$order->update_meta_data("_erp_venta_id", $venta_id);
+			$order->update_meta_data('_erp_folio_venta', $folio_venta);
+			$order->save();
 		}
 		return $venta_id;
 	}
 
 	public function create_erp_order($order_id, $data){
 		error_log ("Create erp Order $order_id, Data: ".print_r($data, true));
+		$order = wc_get_order($order_id);
+		if ($order && $order->get_user_id() && null === $this->ensure_erp_customer($order)){
+			//Sin cliente en el ERP no se envían la dirección ni la venta
+			return;
+		}
 		$this->insertar_direccion($order_id, "billing");
 		$this->insertar_direccion($order_id, "shipping");
 		$this->insertar_venta($order_id);
@@ -312,23 +369,21 @@ class Smueblerias_Public {
 	public function send_payment($order_id){
 		//Si ya registramos un pago, no lo reeenviamos, para no repetir
 		$service = 'InsertarPagosClientesPorVenta';
-		$payment_id = get_post_meta($order_id, "_erp_payment_id", true);
-		if (is_integer($payment_id)){
+		$order = wc_get_order($order_id);
+		$payment_id = $this->get_erp_order_meta($order, "_erp_payment_id");
+		if (is_numeric($payment_id) && $payment_id > 0){
 			error_log("Servicio $service, pago ya registrado cod id = $payment_id, orden Woo $order_id");
 			return 0;
 		}
 		//Validamos que haya registrada una venta en esta orden
-		$venta_id = get_post_meta($order_id, "_erp_venta_id", true);
+		$venta_id = $this->get_erp_order_meta($order, "_erp_venta_id");
 		if ($venta_id ===''){
 			error_log("Servicio $service, sin venta asociada, orden Woo $order_id");
 			return 0;
 		}
 		
 		$options=get_option('smu_config_options');
-		$order = wc_get_order($order_id);
 		$id_user = $order->get_user_id();
-		// Get an instance of the WC_Order object (same as before)
-		$order = wc_get_order($order_id);
 		$data = array();
 		$data['claveServicio'] = $options['smu_clave_servicio'];
 		$data['idEmpresa'] = $options['smu_empresa'];
@@ -337,19 +392,19 @@ class Smueblerias_Public {
 		$data['IdVenta'] = $venta_id;
 		$data['Monto'] = $order->get_total();
 
-		$s = get_post_meta($order_id, '_payment_method',true);
+		$s = $order->get_payment_method();
 		//Forma de pago: Otra
 		$data['FormaPago'] = 11805;
 		//Stripe
-		if (strpos($s, 'stripe')){
+		if (strpos($s, 'stripe') !== false){
 			$data['FormaPago'] = 11802;	
 		}
 		// Openpay
-		if (strpos($s, 'openpay')){
+		if (strpos($s, 'openpay') !== false){
 			$data['FormaPago'] = 11803;	
 		}
 		//Conekta
-		if (strpos($s, 'conekta')){
+		if (strpos($s, 'conekta') !== false){
 			$data['FormaPago'] = 11804;	
 		}
 		$data['Voucher'] = $order->get_transaction_id();
@@ -361,13 +416,19 @@ class Smueblerias_Public {
 			$url .= "&$key=$value";
 		}
 		$url = str_replace(' ', '%20', $url);
-		$response = wp_remote_get($url);
-		$json = json_decode($response['body']);
-		$payment_id = $json;
+		$payment_id = $this->erp_request($service, $url);
 		error_log ("Método de pago: " . $s);
-		error_log ("La data del mensaje enviado: " . print_r($data,true));
-		error_log("Servicio $service, la venta asociada es $venta_id, respuesta $json, url: $url");
-		update_post_meta($order_id, "_erp_payment_id", $payment_id);
+		error_log (ug_mask_erp_data("La data del mensaje enviado: " . print_r($data,true)));
+		error_log(ug_mask_erp_data("Servicio $service, la venta asociada es $venta_id, respuesta " . print_r($payment_id, true) . ", url: $url"));
+		if (null === $payment_id){
+			$this->erp_order_note($order, "no se pudo registrar el pago");
+			return 0;
+		}
+		//401: el ERP rechazo las credenciales, no hay pago que recordar
+		if ($payment_id !== 401){
+			$order->update_meta_data("_erp_payment_id", $payment_id);
+			$order->save();
+		}
 		return $payment_id;
 	}
 
@@ -376,8 +437,8 @@ class Smueblerias_Public {
 		error_log("saving info from Stripe" . print_r($response,true));
 		error_log('orden '. $order->get_id());
 		$last4 = $response->payment_method_details->card->last4;
-		$order_id = $order->get_id();
-		update_post_meta($order_id, "_erp_last4", $last4);
+		$order->update_meta_data("_erp_last4", $last4);
+		$order->save();
 	}
 
 	//Function to bee hooked in woocommerce_checkout_process, podría ser woocommerce_before_checkout_process
@@ -391,9 +452,14 @@ class Smueblerias_Public {
 			error_log ("id: {$item['product_id']}, qty: {$item['quantity']}, stock: {$stock_quantity}, SKU: {$sku}");
 			$product_id_erp = get_post_meta ($product_id, '_IdProducto', true);
 			$qty_erp = $this->get_existencias_erp($product_id_erp);
+			if (null === $qty_erp){
+				//El ERP no respondió: se deja pasar con las existencias que ya tiene la tienda
+				error_log("No pude consultar existencias en el ERP del producto $product_id_erp; se omite la validación");
+				continue;
+			}
 			$stock_control = get_option('woocommerce_manage_stock','no');
 			if (($qty_erp<$qty)&& 'yes' === $stock_control){
-				throw new Exception( sprintf( __( 'Stock insuficiente para ' . $item[data]->get_name() . " tengo $qty_erp " . '... <a href="%s" class="wc-backward">Regresar al carrito</a>', 'woocommerce' ), esc_url( wc_get_page_permalink( 'cart' ) ) ) );		
+				throw new Exception( sprintf( __( 'Stock insuficiente para ' . $item['data']->get_name() . " tengo $qty_erp " . '... <a href="%s" class="wc-backward">Regresar al carrito</a>', 'woocommerce' ), esc_url( wc_get_page_permalink( 'cart' ) ) ) );		
 			}
 
 			//error_log (print_r($item['data'],true));

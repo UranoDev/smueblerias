@@ -199,10 +199,10 @@ class Smueblerias_Admin
 			'&idEmpresa=' . $options['smu_empresa'] . '&idUsuario=' .  $options['smu_usuario'] .
 			'&idProducto=' . $id_producto;
 
-		error_log("URL para llamado: $url");
+		error_log(ug_mask_erp_data("URL para llamado: $url"));
 		$response = wp_remote_get($url);
 		if (is_wp_error($response)) {
-			error_log("Respuesta ($id_producto): " . print_r($response, true));
+			error_log(ug_mask_erp_data("Respuesta ($id_producto): " . print_r($response, true)));
 			return false;
 		}
 		$response = json_decode($response['body']);
@@ -216,16 +216,15 @@ class Smueblerias_Admin
 
 	public function ug_hide_wc_refund_button()
 	{
-		global $post;
-
 		if (!current_user_can('administrator') && !current_user_can('editor')) {
 			return;
 		}
-		if (strpos($_SERVER['REQUEST_URI'], 'post.php?post=') === false) {
+		$screen = get_current_screen();
+		if (empty($screen) || !function_exists('wc_get_page_screen_id') || $screen->id !== wc_get_page_screen_id('shop-order')) {
 			return;
 		}
-
-		if (empty($post) || $post->post_type != 'shop_order') {
+		//Con HPOS el listado y la edicion de pedidos comparten pantalla
+		if ($screen->id !== 'shop_order' && (!isset($_GET['action']) || $_GET['action'] !== 'edit')) {
 			return;
 		}
 ?>
@@ -243,4 +242,31 @@ class Smueblerias_Admin
 <?php
 
 	}
+
+	/**
+	 * Muestra en el producto la fecha desde la que el ERP dejó de enviarlo.
+	 */
+	public function add_missing_meta_box($post_type, $post)
+	{
+		if ('product' !== $post_type || !$post || ('' === get_post_meta($post->ID, '_smu_missing_since', true) && '' === get_post_meta($post->ID, '_smu_description_truncated', true))){
+			return;
+		}
+		add_meta_box('smu_missing_since', 'SMuebleria', array($this, 'render_missing_meta_box'), 'product', 'side', 'high');
+	}
+
+	public function render_missing_meta_box($post)
+	{
+		$desde = get_post_meta($post->ID, '_smu_missing_since', true);
+		if ('' !== $desde){
+			$fecha = date_i18n(get_option('date_format'), strtotime($desde));
+			echo '<p>' . esc_html("El ERP dejó de enviar este producto el $fecha. Se ocultó del catálogo y no se puede comprar.") . '</p>';
+			echo '<p>' . esc_html('Si el ERP lo vuelve a enviar, se muestra de nuevo.') . '</p>';
+		}
+		$recortada = get_post_meta($post->ID, '_smu_description_truncated', true);
+		if ('' !== $recortada){
+			$fecha = date_i18n(get_option('date_format'), strtotime($recortada));
+			echo '<p>' . esc_html("La descripción del ERP tiene más de 6,400 caracteres y se recortó a ese largo ($fecha).") . '</p>';
+		}
+	}
 }
+
