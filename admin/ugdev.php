@@ -341,7 +341,10 @@ function ug_create_product($producto){
 	}
 	$my_prod->set_catalog_visibility($descontinuado ? 'hidden' : 'visible');
 	$my_prod->delete_meta_data('_smu_missing_since');
-	ug_set_erp_category($my_prod, $producto->IdCategoria);
+	//Opción "Sincronizar categorías": apagada por omisión, las categorías de Woo no se tocan
+	if (ug_option_is_yes('smu_sync_categories')){
+		ug_set_erp_category($my_prod, $producto->IdCategoria);
+	}
 	$my_prod->set_regular_price($producto->PrecioLista);
 	$my_prod->set_sale_price($producto->Precio > 0 && $producto->Precio < $producto->PrecioLista ? $producto->Precio : '');
 

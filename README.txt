@@ -19,7 +19,7 @@ SMuebleria mantiene una tienda WooCommerce conectada con el ERP de sMuebleria. E
 * Descarga los productos del ERP a una cola de carga (tabla `queue_products`). Solo se reprocesan los productos nuevos o que cambiaron desde la última carga.
 * Crea en WooCommerce los productos nuevos y actualiza los existentes, identificados por su `IdProducto` del ERP.
 * Actualiza existencias, precio de lista, precio de oferta, peso, medidas, SKU e imágenes. Si el precio del ERP es menor al de lista, la tienda cobra ese precio y muestra el de lista tachado. La primera imagen queda como imagen destacada y las demás en la galería.
-* Asigna a cada producto la categoría de su `IdCategoria`. Si la categoría no existe, la crea con el nombre que tiene en el ERP (si el ERP no responde, usa el número y lo corrige en la siguiente corrida). Si el ERP cambia el nombre, se actualiza; si alguien la renombró en WooCommerce, se respeta. Las categorías puestas a mano se conservan.
+* Con la opción "Sincronizar categorías" marcada (viene sin marcar), asigna a cada producto la categoría de su `IdCategoria`. Si la categoría no existe, la crea con el nombre que tiene en el ERP (si el ERP no responde, usa el número y lo corrige en la siguiente corrida). Si el ERP cambia el nombre, se actualiza; si alguien la renombró en WooCommerce, se respeta. Las categorías puestas a mano se conservan.
 * Marca como agotados los productos descontinuados y los oculta del catálogo. Los demás productos quedan visibles en cada carga.
 
 = Clientes y ventas =
@@ -113,7 +113,7 @@ Se borra la tabla de la cola de carga. Los productos, los pedidos y la configura
 * Los productos descontinuados se ocultan del catálogo.
 * La tienda cobra el precio especial del ERP cuando es menor al de lista.
 * La carga del catálogo solo marca para reprocesar los productos que cambiaron en el ERP. La primera carga después de actualizar procesa todo el catálogo una vez.
-* Los productos reciben la categoría del ERP, con el nombre que tiene en el ERP.
+* Nueva opción "Sincronizar categorías", sin marcar por omisión: las categorías de WooCommerce no se tocan hasta que se marque. Marcada, los productos reciben la categoría del ERP, con el nombre que tiene en el ERP.
 * Las imágenes se sincronizan una por una: solo se descarga la nueva o la que cambió, y se borra la que el ERP quitó. Las imágenes agregadas a mano se conservan.
 * Modo `imagenes` para revisar las imágenes de todo el catálogo, por línea de comandos (`php cron_process_queue.php imagenes`) o por URL en lotes (`cron_process_queue.php?imagenes=1&desde=0&lote=100`).
 * Los productos que el ERP deja de enviar se ocultan del catálogo, quedan agotados (no se pueden comprar) y se les anota la fecha, que se ve en el producto. Si el ERP los vuelve a enviar, se muestran de nuevo. Si el ERP manda menos de la mitad de los productos de la cola, no se oculta ninguno.

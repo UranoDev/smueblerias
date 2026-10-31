@@ -190,6 +190,13 @@ class Smuebleria_Admin_Settings {
 		echo '<input type="checkbox" id="disable_description_medidas" name="'.$s.'[smu_disable_medidas]" value="yes"'. checked('yes',$options['smu_disable_medidas'], false). '/>';
 	}
 
+	public function render_check_sync_categories(){
+		$s = $this->get_name_options();
+		$options = get_option($s, $this->default_config_options());
+		$options = wp_parse_args($options, $this->default_config_options());
+		echo '<input type="checkbox" id="sync_categories" name="'.$s.'[smu_sync_categories]" value="yes"'. checked('yes',$options['smu_sync_categories'], false). '/>';
+	}
+
 	/**
 	 * Render Page
 	 *
@@ -253,6 +260,7 @@ class Smuebleria_Admin_Settings {
 			'smu_disable_description' => "no",
 			'smu_disable_images' => 'no',
 			'smu_disable_medidas' => 'no',
+			'smu_sync_categories' => 'no',
 		);
 		return $defaults;
 	}
@@ -425,6 +433,15 @@ class Smuebleria_Admin_Settings {
 			array($this, 'render_check_disable_load_medidas'),
 			$this->get_slug(),							// The page on which this option will be displayed
 			$this->get_slug() . '-section'				// The name of the section to which this field belongs
+		);
+
+		//Sincronizar las categorías del ERP (apagado por omisión)
+		add_settings_field(
+			$this->get_slug() . 'sync_categories',
+			__('Sincronizar categorías', 'smuebleria_plugin'),
+			array($this, 'render_check_sync_categories'),
+			$this->get_slug(),
+			$this->get_slug() . '-section'
 		);
 
 
